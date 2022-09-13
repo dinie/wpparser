@@ -104,6 +104,7 @@ def parse(path: Union[str, Path]) -> dict:
     channel = doc.find("./channel")
 
     blog = _parse_blog(channel)
+    companies = _parse_companies(channel)
     authors = _parse_authors(channel)
     categories = _parse_categories(channel)
     tags = _parse_tags(channel)
@@ -115,6 +116,7 @@ def parse(path: Union[str, Path]) -> dict:
         "categories": categories,
         "tags": tags,
         "posts": posts,
+        "companies": companies,
     }
 
 
@@ -238,6 +240,46 @@ def _parse_tags(element: ET.Element) -> List[Dict[str, str]]:
         tags.append(tag)
 
     return tags
+
+
+def _parse_companies(element: ET.Element) -> List[Dict[str, str]]:
+    """
+    Retrieves and parses companies (masquerading as terms) into an array/dict.
+    """
+    companies = []
+
+    for item in element.findall(f"./{{{WP_NAMESPACE}}}term"):
+        taxonomy = _get_wp_element(item, "term_taxonomy")
+        if taxonomy == "companies":
+            _id = _get_wp_element(item, "term_id")
+            _name = _get_wp_element(item, "term_name")
+            _slug = _get_wp_element(item, "term_slug")
+            _description = _get_wp_element(item, "term_description")
+            _meta = _parse_termmeta(item)
+
+            company = {
+                "id": _id,
+                "name": _name,
+                "slug": _slug,
+                "description": _description,
+                "meta": _meta,
+            }
+            companies.append(company)
+    return companies
+
+
+def _parse_termmeta(element: ET.Element) -> Dict[str, str]:
+    """
+    Retrieve term metadata as a dictionary
+    """
+    metadata = {}
+    fields = element.findall(f"./{{{WP_NAMESPACE}}}termmeta")
+
+    for field in fields:
+        key = _get_wp_element(field, "meta_key")
+        value = _get_wp_element(field, "meta_value")
+        metadata[key] = value
+    return metadata
 
 
 def _parse_posts(element: ET.Element) -> List[Dict[str, str]]:
